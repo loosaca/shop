@@ -1,0 +1,117 @@
+.data
+title: 		.asciiz "NS-Shaft"
+game_win:	.asciiz "You Win!"
+game_lose:	.asciiz "You lose!"
+sep_line:	.asciiz "\n"
+
+##************** Game Screen Info
+width:		.word 300 # the width of the screen
+height:		.word 600 # the height of the screen
+
+##************** Game Difficulty Info
+max_level:	.word 20 	# The maximum number of level before win. 
+platform_y_speed_update_interval:	.word 5 	# Increase the platform_y_speed every 5 levels.  
+gravity:	.word 2 	# The gravity (the acceration of the y_speed during falling.)
+##**************
+
+##************ Player Info
+player_id:	.word -1
+player_size:	.word 20 30 	# Player size
+player_locs:	.word 0 0 	# Array to save the current player location
+player_speed:	.word 0 0  	# The speed of player (x_speed, y_speed)
+player_move_on_platform_speed:     .word 8 	# The base running speed of the player on a platform. 
+player_falling_x_speed:		.word 4		# The x_speed of the player when it is falling. 
+
+#************ Player Life Valb ue
+life_value:	.word 10
+max_life_value:	.word 10
+increase_life_value:	.word 1
+decrease_life_value:	.word 2
+#************
+
+#************** Platform Info
+platforms:      .word 0:40 	# the array of the platforms in the screen denoted by (id, x_location, y_location, type).
+platform_num:   .word 10  	# the maximum number of platforms in one screen. 
+    :  .word 100 15 	# Platform size
+initial_platform_number:	.word 7 	# The number of initial platforms
+initial_platform_data:	.word 1 100 150 0
+			      2 150 210 3
+			      3 200 270 2
+			      4 150 330 1
+			      5 100 390 4
+			      6 50  450 5
+			      7 0   510 0
+		  	# The configuration data of the first platform: (id = 1, x_loc = 100, y_loc = 150, type = 0)
+current_platform_address:	.word 0 	# The address of the unstable platform in "platforms"
+platform_height_distance:	.word 60	# The height distance between two platforms in y axis. 
+platform_y_speed:		.word -1 	# the speed of all platforms.   negative number for moving upward. 
+initial_platform_y_speed:	.word -1 	# The initial platform speed. 
+spring_platform_upward_speed:	.word -6  	# The y_speed of the player after landding on a spring platform.
+platform_rotation_speed:	.word 0  	# The rotation speed of the current platform.
+base_rotation_speed:		.word 1  	# The absolute value of the rotation speed of the rotating platforms.
+
+#************* Time 
+time_landing_on_unstable_platform:	.word 0   # The time when the player lands on an unstable platform
+time_unstable_platform_hold:	.word  500	# the unstable platform exists for 0.5s after the player stands on it.
+time_player_getting_hurt:	.word 0 	# The time when the player touches a spine. 
+time_player_recover_from_hurt:	.word 3000	# The player takes 3 secnods to recover from being hurt.
+time_sleep:	.word 100 	# Sleep time
+
+#*************** Keyboard Input
+input_key:	.word 0 # input key from the player
+move_key:	.word 0 # last processed key for a player movement
+buffered_move_key: .word 0 # latest buffered movement input during an in-progress player movement
+initial_move_iteration: .word 10 # default number of game iterations for a player movement
+move_iteration: .word 0 # remained number of game iterations for last player movement
+#***************
+
+update_player_life_value:
+
+# ****** Task 5: Update the life value of the player.
+# Hint:
+# 1. If $a0==0, decrease life value. If $a0==1, increase life value.
+beq $a0, $zero, increase
+beq $a0, 1, decrease
+j exit
+
+# 2. Increase case: 
+increase:
+	la $t0, increase_life_value
+	lw $t0, 0($t0)
+	la $t1, life_value
+	lw $t1, 0($t1)
+	add $t1, $t1, $t0
+	la $t2, max_life_value
+	bgt $t1, $t2, increase_exceed
+	j increase_stepping
+increase_exceed:
+	add $t1, $zero, $t2
+increase_stepping:
+	add $a0, $zero, $t1
+	li $v0, 210
+	syscall
+	j exit
+#       a) set "life_value" += "increase_life_value"
+#       b) if "life_value" > "max_life_value", set "life_value" = "max_life_value".
+#       c) Syscall 210 with $a0 = "life_value" to update life value for display.
+# 3. Decrease case:
+decrease:
+	la $t0, decrease_life_value
+	lw $t0, 0($t0)
+	la $t1, life_value
+	lw $t1, 0($t1)
+	sub $t1, $t1, $t0
+	blt $t1, $zero, decrease_exceed
+	j decrease_stepping	
+decrease_exceed:
+	li $t1, 0
+decrease_stepping:
+	add $a0, $zero, $t1
+	li $v0, 0
+	syscall
+	li $a1, 1
+	li $v0, 213
+	syscall
+	li $a0, 4
+	li $a1, 0
+	syscall
